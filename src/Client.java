@@ -166,11 +166,20 @@ public class Client {
 	
 	public ArrayList<String> noAvailServers(String job) {
 		for(ArrayList<String> servers: allInfo) {
-			if(canTakeJob(servers, job)) {
+			if(canTakeJob(servers, job) && serverAvail(servers)) {
 				return servers;
 			}
 		}
 		return null;
+	}
+	
+	public boolean serverAvail(ArrayList<String> servers) {
+		String available = servers.get(2);
+		int avail = Integer.parseInt(available);
+		if(avail == 2 || avail == 3 || avail == 0) {
+			return true;
+		}
+		return false;
 	}
 	
 	public boolean canTakeJob(ArrayList<String> server, String job) {
