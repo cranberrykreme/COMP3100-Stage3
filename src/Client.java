@@ -196,22 +196,26 @@ public class Client {
 		
 		String memory = null;
 		String diskspace = null;
+		String cores = null;
 		
 		String jobMem = null;
 		String jobDisk = null;
+		String jobCores = null;
 
 		memory = server.get(5);//gets memory for server
 		diskspace = server.get(6);//gets diskspace for server
+		cores = server.get(4);//gets cores for server
 		
 		jobMem = getNumb(job,5);//gets memory for job
 		jobDisk = getNumb(job,6);//gets diskspace for job
+		jobCores = getNumb(job,4);//gets cores for job
 		
 		/**
 		 * if the memory and diskspace of the server is large enough
 		 * to hold the job then set the server to that server
 		 * if not, then leave it as null
 		 */
-		if(Double.parseDouble(memory) > Double.parseDouble(jobMem) && Double.parseDouble(diskspace) > Double.parseDouble(jobDisk)) {
+		if(Double.parseDouble(memory) >= Double.parseDouble(jobMem) && Double.parseDouble(diskspace) >= Double.parseDouble(jobDisk) && Double.parseDouble(cores) >= Double.parseDouble(jobCores)) {
 			return true;
 		}
 		
@@ -281,6 +285,7 @@ public class Client {
 	/**
 	 * Finds the number after a certain space
 	 * from both the job and the server information
+	 * #CPU cores is held after space 4
 	 * memory info is held after space 5
 	 * diskspace info is held after space 6
 	 */
