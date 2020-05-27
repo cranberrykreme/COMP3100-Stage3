@@ -37,6 +37,7 @@ public class Client {
 	private static final String ERR2 = "ERR: invalid command (OK)";
 	
 	ArrayList<ArrayList<String>> allInfo = new ArrayList<ArrayList<String>>();
+	ArrayList<ArrayList<String>> allInitialInfo = new ArrayList<ArrayList<String>>();
 	
 	public static void main(String args[]) {
 		Client client = new Client("127.0.0.1", 50000);
@@ -57,20 +58,18 @@ public class Client {
 			
 			obtainServerInfo(socket);//add entire server information to the server arraylist
 			
-			ArrayList<String> firstMSG = noAvailServers(job);
+			allInitialInfo = allInfo;//set the initial servers capacity
 			
-			String servernum = firstMSG.get(1);
-			String found = firstMSG.get(0);
+			ArrayList<String> foundServer = getServers(job,allInfo);//finds the best server for the first job
+			
+			String servernum = foundServer.get(1);
+			String found = foundServer.get(0);
 			String jobN = getNumb(job, 2);
 			
-			MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);
+			MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);//schedules the first job
 			
 			while(true) {
-				job = MSG(socket,REDY);
-				if(job.contains(NONE) || job.contains(ERR)) {
-					break;
-				}
-				
+				job = MSG(socket,REDY);//ready message and reply from server; JOB#
 				if(job.contains(NONE) || job.contains(ERR)) {
 					break;
 				}
@@ -88,36 +87,28 @@ public class Client {
 					}
 				}
 				
+				obtainServerInfo(socket);
+				boolean temp = false;
+				foundServer = getServers(job,allInfo);
 				//sending RESC command
-				String jobDetails = job.substring(index);
-				MSG(socket, RESC + jobDetails);//sends back data
+				//String jobDetails = job.substring(index);
+				//MSG(socket, RESC);//sends back data
 				
-				String servers = MSG(socket, OK);//first server info
-				String foundServer = null;
-				//writing OK while receiving info on servers,
-				//also checks if all info has been sent
-				while(!servers.substring(0, 1).contains(".")) {
-					if(foundServer == null) {
-						foundServer = canTakeAvailJob(servers, job);
-					}
-
-					servers = MSG(socket,OK);//going through the servers available
-					
-				}
-				jobN = getNumb(job, 2);
+				
 				 if(foundServer != null) {
-					servernum = getNumb(foundServer,1);
-					foundServer = getNumb(foundServer,0);
-					MSG(socket,"SCHD " + jobN + " " + foundServer + " " +servernum);
+					servernum = foundServer.get(1);
+					found = foundServer.get(0);
+					jobN = getNumb(job,2);
+					MSG(socket,"SCHD " + jobN + " " + found + " " +servernum);
 				}
 				 else {
-					firstMSG = noAvailServers(job);
+					foundServer = getServers(job, allInitialInfo);
 						
-					servernum = firstMSG.get(1);
-					foundServer = firstMSG.get(0);
+					servernum = foundServer.get(1);
+					found = foundServer.get(0);
 					jobN = getNumb(job, 2);
 						
-					MSG(socket, "SCHD " + jobN + " " + foundServer + " " +servernum);
+					MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);
 				 }
 			}
 			
@@ -164,8 +155,15 @@ public class Client {
 		}
 	}
 	
-	public ArrayList<String> noAvailServers(String job) {
-		for(ArrayList<String> servers: allInfo) {
+	/**
+	 * if there are no avialable servers, returns the first server
+	 * which can take the job from the preformatted arraylist
+	 * @param job
+	 * @param first
+	 * @return
+	 */
+	public ArrayList<String> getServers(String job, ArrayList<ArrayList<String>> list) {
+		for(ArrayList<String> servers: list) {
 			if(canTakeJob(servers, job) && serverAvail(servers)) {
 				return servers;
 			}
@@ -173,6 +171,12 @@ public class Client {
 		return null;
 	}
 	
+	/**
+	 * returns true if the server is available
+	 * @param servers
+	 * @param first
+	 * @return
+	 */
 	public boolean serverAvail(ArrayList<String> servers) {
 		String available = servers.get(2);
 		int avail = Integer.parseInt(available);
@@ -182,6 +186,12 @@ public class Client {
 		return false;
 	}
 	
+	/**
+	 * returns true if the server can take the job (RESCALL)
+	 * @param server
+	 * @param job
+	 * @return
+	 */
 	public boolean canTakeJob(ArrayList<String> server, String job) {
 		
 		String memory = null;
@@ -208,33 +218,46 @@ public class Client {
 		return false;
 	}
 	
-	public String canTakeAvailJob(String server, String job) {
-		String hold = null;
-		
-		String memory = null;
-		String diskspace = null;
-		
-		String jobMem = null;
-		String jobDisk = null;
-
-		memory = getNumb(server,5);//gets memory for server
-		diskspace = getNumb(server,6);//gets diskspace for server
-		
-		jobMem = getNumb(job,5);//gets memory for job
-		jobDisk = getNumb(job,6);//gets diskspace for job
-		
-		/**
-		 * if the memory and diskspace of the server is large enough
-		 * to hold the job then set the server to that server
-		 * if not, then leave it as null
-		 */
-		if(Double.parseDouble(memory) > Double.parseDouble(jobMem) && Double.parseDouble(diskspace) > Double.parseDouble(jobDisk)) {
-			hold = server;
-		}
-		
-		return hold;
-	}
+	/**
+	 * returns the server if it can run the job (RESCAVAIL)
+	 * @param server
+	 * @param job
+	 * @return
+	 */
+//	public String canTakeAvailJob(String server, String job) {
+//		String hold = null;
+//		
+//		String memory = null;
+//		String diskspace = null;
+//		
+//		String jobMem = null;
+//		String jobDisk = null;
+//
+//		memory = getNumb(server,5);//gets memory for server
+//		diskspace = getNumb(server,6);//gets diskspace for server
+//		
+//		jobMem = getNumb(job,5);//gets memory for job
+//		jobDisk = getNumb(job,6);//gets diskspace for job
+//		
+//		/**
+//		 * if the memory and diskspace of the server is large enough
+//		 * to hold the job then set the server to that server
+//		 * if not, then leave it as null
+//		 */
+//		if(Double.parseDouble(memory) > Double.parseDouble(jobMem) && Double.parseDouble(diskspace) > Double.parseDouble(jobDisk)) {
+//			hold = server;
+//		}
+//		
+//		return hold;
+//	}
 	
+	/**
+	 * sends and receives messages from the server
+	 * @param socket
+	 * @param msg
+	 * @return
+	 * @throws IOException
+	 */
 	private String MSG(Socket socket, String msg) throws IOException {
 		outToServer = socket.getOutputStream();
 		out = new DataOutputStream(outToServer);
