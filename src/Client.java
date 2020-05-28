@@ -26,6 +26,7 @@ public class Client {
 	private DataInputStream in;
 	
 	static int chosenAlgorithm = -1;
+	static int accessAlgorithms = 0;
 	
 	private static final String HELO =  "HELO";
 	private static final String AUTH =  "AUTH comp335";
@@ -44,6 +45,7 @@ public class Client {
 	public static void main(String args[]) {
 		for(int i = 0; i < args.length; i++) {
 			if(args[i].contains("-a")) {//user wants to choose algorithm
+				accessAlgorithms = 1;
 				if(args[i+1].contains("ff")) {//user wants to choose first fit
 					chosenAlgorithm = 1;
 				} else if(args[i+1].contains("bf")) {
@@ -54,8 +56,19 @@ public class Client {
 					chosenAlgorithm = 0;
 				}
 			}
+			if(args[i].contains("help")) {
+				System.out.println("IN ORDER TO USE THIS CLIENT ALGORITHM YOU FIRST HAVE TO");
+				System.out.println("WRITE -a FOLLOWED BY YOU'RE CHOICE OF ALGORITHM");
+				System.out.println("ff - first fit");
+				System.out.println("bf - best fit");
+				System.out.println("wf - worst fit");
+				System.out.println("lar - largest server");
+			}
 		}
-		Client client = new Client("127.0.0.1", 50000);
+		if(accessAlgorithms == 1) {
+			Client client = new Client("127.0.0.1", 50000);
+		}
+
 	}
 	
 	public Client(String address, int port) {
@@ -140,6 +153,7 @@ public class Client {
 		obtainServerInfo(socket);//add entire server information to the server arraylist
 		
 		allInitialInfo = allInfo;//set the initial servers capacity
+		allInitialInfo = sort(allInitialInfo, allInitialInfo.size());
 		
 		ArrayList<String> foundServer = getServers(job,allInfo);//finds the best server for the first job
 		
@@ -169,6 +183,7 @@ public class Client {
 			}
 			
 			obtainServerInfo(socket);
+			allInfo = sort(allInfo, allInfo.size());
 			boolean temp = false;
 			foundServer = getServers(job,allInfo);
 			//sending RESC command
@@ -363,6 +378,49 @@ public class Client {
 		}
 		
 		return numb;
+	}
+	
+	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len) {
+		if(len< 2) {
+			return list;
+		}
+		
+		int mid = len/2;
+		ArrayList<ArrayList<String>> left = new ArrayList<ArrayList<String>>();
+		ArrayList<ArrayList<String>> right = new ArrayList<ArrayList<String>>();
+		
+		for(int i = 0; i < mid; i++) {
+			left.add(list.get(i));
+		}
+		for(int i = mid; i < len; i++) {
+			right.add(list.get(i));
+		}
+		
+		sort(left, left.size());
+		sort(right, right.size());
+		
+		list = merge(list,left,right,mid,len-mid);
+		return list;
+	}
+	
+	public ArrayList<ArrayList<String>> merge(ArrayList<ArrayList<String>> original, ArrayList<ArrayList<String>> left, ArrayList<ArrayList<String>> right, int leftLength, int rightLength){
+		int i = 0, j = 0, k = 0;
+		
+		while(i < leftLength && j < rightLength) {
+			if(Double.parseDouble(left.get(i).get(4)) <= Double.parseDouble(right.get(i).get(4))) {
+				original.set(k++, left.get(i++));
+			} else {
+				original.set(j++, right.get(i++));
+			}
+		}
+		while(i<leftLength) {
+			original.set(k++, left.get(i++));
+		}
+		while(j<rightLength) {
+			original.set(k++, right.get(j++));
+		}
+		
+		return original;
 	}
 
 }
