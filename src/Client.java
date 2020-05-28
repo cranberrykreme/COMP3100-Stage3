@@ -25,6 +25,8 @@ public class Client {
 	private InputStream inFromServer;
 	private DataInputStream in;
 	
+	static int chosenAlgorithm = -1;
+	
 	private static final String HELO =  "HELO";
 	private static final String AUTH =  "AUTH comp335";
 	private static final String QUIT = "QUIT";
@@ -40,6 +42,19 @@ public class Client {
 	ArrayList<ArrayList<String>> allInitialInfo = new ArrayList<ArrayList<String>>();
 	
 	public static void main(String args[]) {
+		for(int i = 0; i < args.length; i++) {
+			if(args[i].contains("-a")) {//user wants to choose algorithm
+				if(args[i+1].contains("ff")) {//user wants to choose first fit
+					chosenAlgorithm = 1;
+				} else if(args[i+1].contains("bf")) {
+					chosenAlgorithm = 2;
+				} else if(args[i+1].contains("wf")) {
+					chosenAlgorithm = 3;
+				} else if(args[i+1].contains("lar")) {
+					chosenAlgorithm = 0;
+				}
+			}
+		}
 		Client client = new Client("127.0.0.1", 50000);
 	}
 	
@@ -49,6 +64,24 @@ public class Client {
 			System.out.println("Attempting connection with " + address + " at port " + port);
 			socket = new Socket(address,port);
 			System.out.println("Connected");
+			
+			if(chosenAlgorithm == 0) {
+				System.out.println("largest server algorithm not supported by this Client");
+				System.out.println("please write ff for first fit algorithm");
+				return;
+			} else if(chosenAlgorithm == 2) {
+				System.out.println("best-fit server algorithm not supported by this Client");
+				System.out.println("please write ff for first fit algorithm");
+				return;
+			} else if(chosenAlgorithm == 3) {
+				System.out.println("worst-fit server algorithm not supported by this Client");
+				System.out.println("please write ff for first fit algorithm");
+				return;
+			} else if(chosenAlgorithm == -1) {
+				System.out.println("ERROR: PLEASE INPUT AN ALGORITHM TO RUN THE CLIENT	");
+				System.out.println("please write -a <algorithm> to access a specific algorithm");
+				return;
+			}
 			
 			MSG(socket, HELO);//first message and reply from server: OK
 			
