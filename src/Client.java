@@ -150,7 +150,7 @@ public class Client {
 		
 		String job = MSG(socket, REDY);//third msg and reply from server: JOB1
 		
-		obtainServerInfo(socket, "ALL", "");//add entire server information to the server arraylist
+		obtainServerInfo(socket, "All", "");//add entire server information to the server arraylist
 		
 		allInitialInfo = allInfo;//set the initial servers capacity
 		allInitialInfo = sort(allInitialInfo, allInitialInfo.size());
@@ -183,8 +183,8 @@ public class Client {
 				}
 			}
 			String jobInfo = job.substring(index);
-			obtainServerInfo(socket, "AVAIL", jobInfo);
-			allInfo = sort(allInfo, allInfo.size());
+			obtainServerInfo(socket, "Avail", jobInfo);
+			//allInfo = sort(allInfo, allInfo.size());
 			boolean temp = false;
 			foundServer = getServers(job,allInfo);
 			//sending RESC command
