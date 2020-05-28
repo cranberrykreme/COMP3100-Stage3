@@ -35,7 +35,7 @@ public class Client {
 	private static final String NONE = "NONE";
 	private static final String ERR = "ERR: No such waiting job exists";
 	private static final String RESC = "RESC Avail";
-	private static final String RESCALL = "RESC All";
+	private static final String RESCALL = "RESC ";
 	private static final String OK = "OK";
 	private static final String ERR2 = "ERR: invalid command (OK)";
 	
@@ -124,10 +124,10 @@ public class Client {
 	 * @param socket: to send to the MSG class
 	 * @throws IOException: if there is any issue with connection
 	 */
-	public void obtainServerInfo(Socket socket) throws IOException {
+	public void obtainServerInfo(Socket socket, String RESC, String jobIndex) throws IOException {
 		allInfo = new ArrayList<ArrayList<String>>();
 		
-		MSG(socket, RESCALL);//gain server information, returns DATA
+		MSG(socket, RESCALL + RESC + " " + jobIndex);//gain server information, returns DATA
 		
 		String serverInfo = MSG(socket,OK);//send ok, receive info on first server
 		
@@ -150,10 +150,11 @@ public class Client {
 		
 		String job = MSG(socket, REDY);//third msg and reply from server: JOB1
 		
-		obtainServerInfo(socket);//add entire server information to the server arraylist
+		obtainServerInfo(socket, "ALL", "");//add entire server information to the server arraylist
 		
 		allInitialInfo = allInfo;//set the initial servers capacity
 		allInitialInfo = sort(allInitialInfo, allInitialInfo.size());
+		
 		
 		ArrayList<String> foundServer = getServers(job,allInfo);//finds the best server for the first job
 		
@@ -181,8 +182,8 @@ public class Client {
 					break;
 				}
 			}
-			
-			obtainServerInfo(socket);
+			String jobInfo = job.substring(index);
+			obtainServerInfo(socket, "AVAIL", jobInfo);
 			allInfo = sort(allInfo, allInfo.size());
 			boolean temp = false;
 			foundServer = getServers(job,allInfo);
@@ -207,6 +208,8 @@ public class Client {
 				MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);
 			 }
 		}
+		System.out.println("original info: " + allInitialInfo);
+		System.out.println("non-original info: " + allInfo);
 	}
 	
 	/**
@@ -380,6 +383,12 @@ public class Client {
 		return numb;
 	}
 	
+	/**
+	 * merge sort used to put the smaller servers first
+	 * @param list
+	 * @param len
+	 * @return sorted arraylist
+	 */
 	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len) {
 		if(len< 2) {
 			return list;
@@ -407,10 +416,15 @@ public class Client {
 		int i = 0, j = 0, k = 0;
 		
 		while(i < leftLength && j < rightLength) {
-			if(Double.parseDouble(left.get(i).get(4)) <= Double.parseDouble(right.get(i).get(4))) {
+			double lCore = Double.parseDouble(left.get(i).get(4));
+			double rCore = Double.parseDouble(right.get(i).get(4));
+			
+			double lNumb = Double.parseDouble(left.get(i).get(1));
+			double rNumb = Double.parseDouble(right.get(i).get(1));
+			if(lCore <= rCore) {// && lNumb < rNumb) {
 				original.set(k++, left.get(i++));
 			} else {
-				original.set(j++, right.get(i++));
+				original.set(k++, right.get(j++));
 			}
 		}
 		while(i<leftLength) {
