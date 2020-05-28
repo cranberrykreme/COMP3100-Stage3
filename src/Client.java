@@ -81,68 +81,8 @@ public class Client {
 				System.out.println("ERROR: PLEASE INPUT AN ALGORITHM TO RUN THE CLIENT	");
 				System.out.println("please write -a <algorithm> to access a specific algorithm");
 				return;
-			}
-			
-			MSG(socket, HELO);//first message and reply from server: OK
-			
-			MSG(socket, AUTH);//second msg and reply from server: OK
-			
-			String job = MSG(socket, REDY);//third msg and reply from server: JOB1
-			
-			obtainServerInfo(socket);//add entire server information to the server arraylist
-			
-			allInitialInfo = allInfo;//set the initial servers capacity
-			
-			ArrayList<String> foundServer = getServers(job,allInfo);//finds the best server for the first job
-			
-			String servernum = foundServer.get(1);
-			String found = foundServer.get(0);
-			String jobN = getNumb(job, 2);
-			
-			MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);//schedules the first job
-			
-			while(true) {
-				job = MSG(socket,REDY);//ready message and reply from server; JOB#
-				if(job.contains(NONE) || job.contains(ERR)) {
-					break;
-				}
-				
-				//finding correct resc command for specific job
-				int spaces = 0;
-				int index = 0;
-				for(int temp = 0; temp < job.length(); temp++) {
-					if(job.charAt(temp) == ' ') {
-						spaces++;
-					}
-					if(spaces == 4) {
-						index = temp;
-						break;
-					}
-				}
-				
-				obtainServerInfo(socket);
-				boolean temp = false;
-				foundServer = getServers(job,allInfo);
-				//sending RESC command
-				//String jobDetails = job.substring(index);
-				//MSG(socket, RESC);//sends back data
-				
-				
-				 if(foundServer != null) {
-					servernum = foundServer.get(1);
-					found = foundServer.get(0);
-					jobN = getNumb(job,2);
-					MSG(socket,"SCHD " + jobN + " " + found + " " +servernum);
-				}
-				 else {
-					foundServer = getServers(job, allInitialInfo);
-						
-					servernum = foundServer.get(1);
-					found = foundServer.get(0);
-					jobN = getNumb(job, 2);
-						
-					MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);
-				 }
+			} else if(chosenAlgorithm == 1) {
+				firstFit(socket);
 			}
 			
 			//LAST STAGE: QUIT
@@ -155,6 +95,8 @@ public class Client {
 			System.out.println(e);
 		}
 		try {
+			inFromServer.close();
+			outToServer.close();
 			in.close();
 			out.close();
 			socket.close();
@@ -185,6 +127,70 @@ public class Client {
 			//add to info arraylist and get next server
 			allInfo.add(singleInfo);
 			serverInfo = MSG(socket,OK);
+		}
+	}
+	
+	public void firstFit(Socket socket) throws IOException {
+		MSG(socket, HELO);//first message and reply from server: OK
+		
+		MSG(socket, AUTH);//second msg and reply from server: OK
+		
+		String job = MSG(socket, REDY);//third msg and reply from server: JOB1
+		
+		obtainServerInfo(socket);//add entire server information to the server arraylist
+		
+		allInitialInfo = allInfo;//set the initial servers capacity
+		
+		ArrayList<String> foundServer = getServers(job,allInfo);//finds the best server for the first job
+		
+		String servernum = foundServer.get(1);
+		String found = foundServer.get(0);
+		String jobN = getNumb(job, 2);
+		
+		MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);//schedules the first job
+		
+		while(true) {
+			job = MSG(socket,REDY);//ready message and reply from server; JOB#
+			if(job.contains(NONE) || job.contains(ERR)) {
+				break;
+			}
+			
+			//finding correct resc command for specific job
+			int spaces = 0;
+			int index = 0;
+			for(int temp = 0; temp < job.length(); temp++) {
+				if(job.charAt(temp) == ' ') {
+					spaces++;
+				}
+				if(spaces == 4) {
+					index = temp;
+					break;
+				}
+			}
+			
+			obtainServerInfo(socket);
+			boolean temp = false;
+			foundServer = getServers(job,allInfo);
+			//sending RESC command
+			//String jobDetails = job.substring(index);
+			//MSG(socket, RESC);//sends back data
+			
+			
+			 if(foundServer != null) {
+				servernum = foundServer.get(1);
+				found = foundServer.get(0);
+				jobN = getNumb(job,2);
+				MSG(socket,"SCHD " + jobN + " " + found + " " +servernum);
+			}
+			 else {
+				foundServer = getServers(job, allInitialInfo);
+					
+				servernum = foundServer.get(1);
+				found = foundServer.get(0);
+				jobN = getNumb(job, 2);
+					
+				MSG(socket, "SCHD " + jobN + " " + found + " " +servernum);
+			 }
 		}
 	}
 	
