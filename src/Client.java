@@ -35,12 +35,13 @@ public class Client {
 	private static final String NONE = "NONE";
 	private static final String ERR = "ERR: No such waiting job exists";
 	private static final String RESC = "RESC Avail";
-	private static final String RESCALL = "RESC ";
+	private static final String RESCALL = "RESC All";
 	private static final String OK = "OK";
 	private static final String ERR2 = "ERR: invalid command (OK)";
 	
 	ArrayList<ArrayList<String>> allInfo = new ArrayList<ArrayList<String>>();
 	ArrayList<ArrayList<String>> allInitialInfo = new ArrayList<ArrayList<String>>();
+	ArrayList<String> sortOrder = new ArrayList<String>();
 	
 	public static void main(String args[]) {
 		for(int i = 0; i < args.length; i++) {
@@ -97,7 +98,7 @@ public class Client {
 			} else if(chosenAlgorithm == 1) {
 				firstFit(socket);
 			}
-			
+			System.out.println(sortOrder);
 			//LAST STAGE: QUIT
 			MSG(socket, QUIT);
 			
@@ -124,10 +125,10 @@ public class Client {
 	 * @param socket: to send to the MSG class
 	 * @throws IOException: if there is any issue with connection
 	 */
-	public void obtainServerInfo(Socket socket, String RESC, String jobIndex) throws IOException {
+	public void obtainServerInfo(Socket socket) throws IOException {
 		allInfo = new ArrayList<ArrayList<String>>();
 		
-		MSG(socket, RESCALL + RESC + " " + jobIndex);//gain server information, returns DATA
+		MSG(socket, RESCALL);//gain server information, returns DATA
 		
 		String serverInfo = MSG(socket,OK);//send ok, receive info on first server
 		
@@ -150,10 +151,11 @@ public class Client {
 		
 		String job = MSG(socket, REDY);//third msg and reply from server: JOB1
 		
-		obtainServerInfo(socket, "All", "");//add entire server information to the server arraylist
+		obtainServerInfo(socket);//add entire server information to the server arraylist
 		
 		allInitialInfo = allInfo;//set the initial servers capacity
 		allInitialInfo = sort(allInitialInfo, allInitialInfo.size());
+		setServerOrder();
 		
 		
 		ArrayList<String> foundServer = getServers(job,allInfo);//finds the best server for the first job
@@ -183,8 +185,8 @@ public class Client {
 				}
 			}
 			String jobInfo = job.substring(index);
-			obtainServerInfo(socket, "Avail", jobInfo);
-			//allInfo = sort(allInfo, allInfo.size());
+			obtainServerInfo(socket);
+			allInfo = sort(allInfo, allInfo.size());
 			boolean temp = false;
 			foundServer = getServers(job,allInfo);
 			//sending RESC command
@@ -237,6 +239,7 @@ public class Client {
 	public boolean serverAvail(ArrayList<String> servers) {
 		String available = servers.get(2);
 		int avail = Integer.parseInt(available);
+		
 		if(avail == 2 || avail == 3 || avail == 0) {
 			return true;
 		}
@@ -278,39 +281,6 @@ public class Client {
 		
 		return false;
 	}
-	
-	/**
-	 * returns the server if it can run the job (RESCAVAIL)
-	 * @param server
-	 * @param job
-	 * @return
-	 */
-//	public String canTakeAvailJob(String server, String job) {
-//		String hold = null;
-//		
-//		String memory = null;
-//		String diskspace = null;
-//		
-//		String jobMem = null;
-//		String jobDisk = null;
-//
-//		memory = getNumb(server,5);//gets memory for server
-//		diskspace = getNumb(server,6);//gets diskspace for server
-//		
-//		jobMem = getNumb(job,5);//gets memory for job
-//		jobDisk = getNumb(job,6);//gets diskspace for job
-//		
-//		/**
-//		 * if the memory and diskspace of the server is large enough
-//		 * to hold the job then set the server to that server
-//		 * if not, then leave it as null
-//		 */
-//		if(Double.parseDouble(memory) > Double.parseDouble(jobMem) && Double.parseDouble(diskspace) > Double.parseDouble(jobDisk)) {
-//			hold = server;
-//		}
-//		
-//		return hold;
-//	}
 	
 	/**
 	 * sends and receives messages from the server
@@ -421,11 +391,47 @@ public class Client {
 			
 			double lNumb = Double.parseDouble(left.get(i).get(1));
 			double rNumb = Double.parseDouble(right.get(i).get(1));
-			if(lCore <= rCore) {// && lNumb < rNumb) {
-				original.set(k++, left.get(i++));
-			} else {
-				original.set(k++, right.get(j++));
+			
+			String lName = left.get(i).get(0);
+			String rName = right.get(i).get(0);
+			
+			int lIndex = -1;
+			int rIndex = -1;
+			
+			for(int index = 0;index < sortOrder.size(); index++) {
+				if(sortOrder.get(index).equals(lName)) {
+					lIndex = index;
+					break;
+				}
 			}
+			
+			for(int index = 0; index < sortOrder.size(); index++) {
+				if(sortOrder.get(index).equals(rName)) {
+					rIndex = index;
+					break;
+				}
+			}
+//			if(lIndex == -1 && rIndex == -1) {
+//				if(lCore < rCore) {
+//					original.set(k++, left.get(i++));
+//				} else if(lCore == rCore && lNumb < rNumb) {
+//					original.set(k++, left.get(i++));
+//				}
+//				else {
+//					original.set(k++, right.get(j++));
+//				}
+//			} else {
+				if(lCore <= rCore || (lIndex <= rIndex && lIndex >=0 && rIndex >=0 && lNumb < rNumb)) {
+//					if((lIndex < -1 || rIndex < -1) && lCore <= rCore) {
+							original.set(k++, left.get(i++));
+						
+//					} else if((lIndex >=0 && rIndex >= 0) && (lCore<=rCore && lIndex <rIndex && lNumb <rNumb)) {
+//							original.set(k++, left.get(i++));
+					} else {
+						original.set(k++, right.get(j++));
+					}
+			//}
+
 		}
 		while(i<leftLength) {
 			original.set(k++, left.get(i++));
@@ -435,6 +441,18 @@ public class Client {
 		}
 		
 		return original;
+	}
+	
+	public void setServerOrder() {
+		String temp = null;
+		for(ArrayList<String> list: allInitialInfo) {
+			System.out.println("this is the temp value " + temp);
+			if(!list.get(0).equals(temp)) {
+				System.out.println("the temp value does " + temp + " does not equal the list name " + list.get(0));
+				temp = list.get(0);
+				sortOrder.add(list.get(0));
+			}
+		}
 	}
 
 }
