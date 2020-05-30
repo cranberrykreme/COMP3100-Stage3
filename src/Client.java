@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -8,6 +9,15 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.List;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 /**
  * 
@@ -55,6 +65,8 @@ public class Client {
 					chosenAlgorithm = 3;
 				} else if(args[i+1].contains("lar")) {
 					chosenAlgorithm = 0;
+				} else if(args[i+1].contains("fs")) {
+					chosenAlgorithm = 4;
 				}
 			}
 			if(args[i].contains("help")) {
@@ -97,6 +109,8 @@ public class Client {
 				return;
 			} else if(chosenAlgorithm == 1) {
 				firstFit(socket);
+			} else if(chosenAlgorithm == 4) {
+				fastServer(socket);
 			}
 			System.out.println(sortOrder);
 			//LAST STAGE: QUIT
@@ -144,6 +158,13 @@ public class Client {
 		}
 	}
 	
+	/**
+	 * first fit sorts the servers
+	 * then sends them a job to the first server
+	 * which can run it
+	 * @param socket
+	 * @throws IOException
+	 */
 	public void firstFit(Socket socket) throws IOException {
 		MSG(socket, HELO);//first message and reply from server: OK
 		
@@ -212,6 +233,126 @@ public class Client {
 		}
 		System.out.println("original info: " + allInitialInfo);
 		System.out.println("non-original info: " + allInfo);
+	}
+	
+	/**
+	 * attempts to allocate the jobs in the fastest possible
+	 * time
+	 * @param socket
+	 * @throws IOException
+	 */
+	public void fastServer(Socket socket) throws IOException{
+		
+		
+		//obtainServerInfo(socket);//initialize the arrayList
+		
+		MSG(socket, HELO);//first message and reply from server: OK
+		
+		MSG(socket, AUTH);//second msg and reply from server: OK
+		
+		//parse system.xml
+		//File file = new File("/home/comp335/ds-sim/configs/system.xml");
+		File file = new File("/Users/chrispurkiss/Stage2Sub/ds-sim/system.xml");
+				
+		ArrayList<ArrayList<String>> str = parse(file);
+		
+		String server = null;
+		
+		String jobN = null;
+		
+		while(true) {
+			String job = MSG(socket, REDY);//msg redy for jobn
+			if(job.contains(NONE) || job.contains(ERR)) {
+				break;
+			}
+			
+			boolean foundServer = false;
+			
+			String type = getNumb(job, 0);
+			Double coreCount = Double.parseDouble(getNumb(job, 4));
+			Double memory = Double.parseDouble(getNumb(job, 5));
+			Double disk = Double.parseDouble(getNumb(job, 6));
+			
+			int serverN = 0;
+			
+			jobN = getNumb(job, 2);
+			
+			for(ArrayList<String> list: str) {
+				if(coreCount <= Double.parseDouble(list.get(1)) && memory <= Double.parseDouble(list.get(2)) && disk <= Double.parseDouble(list.get(3))) {
+					server = list.get(0);
+					foundServer = true;
+					if(Integer.parseInt(list.get(5)) < (Integer.parseInt(list.get(4)))) {//is the last server used at the limit of the server type?
+						serverN = Integer.parseInt(list.get(5));
+						String num = Integer.toString(serverN+1);
+						list.set(5,num);
+					} else {
+						String num = "1";
+						serverN = 0;
+						list.set(5, num);
+					}
+					
+					break;
+				} else {
+					System.out.println("server " + list + " cannot run this job " + job);
+				}
+			}
+			
+			if(foundServer) {
+				MSG(socket, "SCHD " + jobN + " " + server + " " + serverN);
+			}
+		}
+		
+		
+		
+	}
+	
+	/*
+	 * get information out of file and return
+	 * the largest server (the one with the most cores)
+	 */
+	private ArrayList<ArrayList<String>> parse(File file) {//todo: find the first server that can take the job
+		try {
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			Document doc = dBuilder.parse(file);
+			ArrayList<ArrayList<String>> str = new ArrayList<ArrayList<String>>();
+
+			
+			doc.getDocumentElement().normalize();
+			
+			NodeList nList = doc.getElementsByTagName("server");
+			
+			System.out.println("made it to 1");
+			
+			if(doc.hasChildNodes()) {
+				for(int i = 0; i < nList.getLength(); i++) {
+					Node node = nList.item(i);
+					ArrayList<String> list = new ArrayList<String>();
+					
+					if(node.getNodeType() == Node.ELEMENT_NODE) {
+						Element element = (Element) node;
+						System.out.println("made it to 1.5");
+						list.add(0, element.getAttribute("type"));
+						System.out.println("made it to 1.7");
+						list.add(1,element.getAttribute("coreCount"));
+						list.add(2,element.getAttribute("memory"));
+						list.add(3,element.getAttribute("disk"));
+						list.add(4, element.getAttribute("limit"));//maximum number of servers of this type
+						list.add(5, "0");
+						
+						str.add(list);
+					}
+				}
+			}
+			
+			System.out.println("made it to 2");
+			return str;
+			
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+		System.out.println("did not work!!!!");
+		return null;
 	}
 	
 	/**
