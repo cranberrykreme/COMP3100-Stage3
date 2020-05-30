@@ -154,7 +154,7 @@ public class Client {
 		obtainServerInfo(socket);//add entire server information to the server arraylist
 		
 		allInitialInfo = allInfo;//set the initial servers capacity
-		allInitialInfo = sort(allInitialInfo, allInitialInfo.size());
+		allInitialInfo = sort(allInitialInfo, allInitialInfo.size(), true);
 		setServerOrder();
 		
 		
@@ -186,7 +186,7 @@ public class Client {
 			}
 			String jobInfo = job.substring(index);
 			obtainServerInfo(socket);
-			allInfo = sort(allInfo, allInfo.size());
+			allInfo = sort(allInfo, allInfo.size(), false);
 			boolean temp = false;
 			foundServer = getServers(job,allInfo);
 			//sending RESC command
@@ -359,7 +359,7 @@ public class Client {
 	 * @param len
 	 * @return sorted arraylist
 	 */
-	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len) {
+	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len, boolean original) {
 		if(len< 2) {
 			return list;
 		}
@@ -375,10 +375,14 @@ public class Client {
 			right.add(list.get(i));
 		}
 		
-		sort(left, left.size());
-		sort(right, right.size());
+		sort(left, left.size(), original);
+		sort(right, right.size(), original);
 		
-		list = merge(list,left,right,mid,len-mid);
+		if(original) {
+			list = merge(list,left,right,mid,len-mid);
+		} else {
+			list = combine(list,left,right,mid,len-mid);
+		}
 		return list;
 	}
 	
@@ -389,6 +393,33 @@ public class Client {
 			double lCore = Double.parseDouble(left.get(i).get(4));
 			double rCore = Double.parseDouble(right.get(i).get(4));
 			
+			double lNumb = Double.parseDouble(left.get(i).get(1));
+			double rNumb = Double.parseDouble(right.get(i).get(1));
+
+				if(lCore < rCore) {
+					original.set(k++, left.get(i++));
+				} else if (lCore == rCore && lNumb < rNumb) {
+					original.set(k++, left.get(i++));
+				}
+				else {
+					original.set(k++, right.get(j++));
+				}
+
+		}
+		while(i<leftLength) {
+			original.set(k++, left.get(i++));
+		}
+		while(j<rightLength) {
+			original.set(k++, right.get(j++));
+		}
+		
+		return original;
+	}
+	
+	public ArrayList<ArrayList<String>> combine(ArrayList<ArrayList<String>> original, ArrayList<ArrayList<String>> left, ArrayList<ArrayList<String>> right, int leftLength, int rightLength){
+		int i = 0, j = 0, k = 0;
+		
+		while(i < leftLength && j < rightLength) {
 			double lNumb = Double.parseDouble(left.get(i).get(1));
 			double rNumb = Double.parseDouble(right.get(i).get(1));
 			
@@ -411,26 +442,15 @@ public class Client {
 					break;
 				}
 			}
-//			if(lIndex == -1 && rIndex == -1) {
-//				if(lCore < rCore) {
-//					original.set(k++, left.get(i++));
-//				} else if(lCore == rCore && lNumb < rNumb) {
-//					original.set(k++, left.get(i++));
-//				}
-//				else {
-//					original.set(k++, right.get(j++));
-//				}
-//			} else {
-				if(lCore <= rCore || (lIndex <= rIndex && lIndex >=0 && rIndex >=0 && lNumb < rNumb)) {
-//					if((lIndex < -1 || rIndex < -1) && lCore <= rCore) {
-							original.set(k++, left.get(i++));
-						
-//					} else if((lIndex >=0 && rIndex >= 0) && (lCore<=rCore && lIndex <rIndex && lNumb <rNumb)) {
-//							original.set(k++, left.get(i++));
-					} else {
-						original.set(k++, right.get(j++));
-					}
-			//}
+
+				if(lIndex < rIndex) {
+					original.set(k++, left.get(i++));
+				}else if(lIndex == rIndex && lNumb < rNumb) {
+					original.set(k++, left.get(i++));
+				}	else {
+					original.set(k++, right.get(j++));
+				}
+
 
 		}
 		while(i<leftLength) {
