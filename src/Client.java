@@ -175,7 +175,7 @@ public class Client {
 		obtainServerInfo(socket);//add entire server information to the server arraylist
 		
 		allInitialInfo = allInfo;//set the initial servers capacity
-		allInitialInfo = sort(allInitialInfo, allInitialInfo.size(), true);
+		allInitialInfo = sort(allInitialInfo, allInitialInfo.size(), 0);
 		setServerOrder();
 		
 		
@@ -207,7 +207,7 @@ public class Client {
 			}
 			String jobInfo = job.substring(index);
 			obtainServerInfo(socket);
-			allInfo = sort(allInfo, allInfo.size(), false);
+			allInfo = sort(allInfo, allInfo.size(), 1);
 			boolean temp = false;
 			foundServer = getServers(job,allInfo);
 			//sending RESC command
@@ -251,8 +251,8 @@ public class Client {
 		MSG(socket, AUTH);//second msg and reply from server: OK
 		
 		//parse system.xml
-		//File file = new File("/home/comp335/ds-sim/configs/system.xml");
-		File file = new File("/Users/chrispurkiss/Stage2Sub/ds-sim/system.xml");
+		File file = new File("/home/comp335/ds-sim/system.xml");
+		//File file = new File("/Users/chrispurkiss/Stage2Sub/ds-sim/system.xml");
 				
 		ArrayList<ArrayList<String>> str = parse(file);
 		
@@ -265,7 +265,6 @@ public class Client {
 			if(job.contains(NONE) || job.contains(ERR)) {
 				break;
 			}
-			
 			boolean foundServer = false;
 			
 			String type = getNumb(job, 0);
@@ -273,32 +272,61 @@ public class Client {
 			Double memory = Double.parseDouble(getNumb(job, 5));
 			Double disk = Double.parseDouble(getNumb(job, 6));
 			
-			int serverN = 0;
+			int serverN = -1;
 			
 			jobN = getNumb(job, 2);
 			
-			for(ArrayList<String> list: str) {
-				if(coreCount <= Double.parseDouble(list.get(1)) && memory <= Double.parseDouble(list.get(2)) && disk <= Double.parseDouble(list.get(3))) {
-					server = list.get(0);
+			//for(ArrayList<String> list: str) {
+			for(int i = 0; i < str.size(); i++) {
+				if(coreCount <= Double.parseDouble(str.get(i).get(1)) && memory <= Double.parseDouble(str.get(i).get(2)) && disk <= Double.parseDouble(str.get(i).get(3))) {
+					server = str.get(i).get(0);
 					foundServer = true;
-					if(Integer.parseInt(list.get(5)) < (Integer.parseInt(list.get(4)))) {//is the last server used at the limit of the server type?
-						serverN = Integer.parseInt(list.get(5));
+					if(Integer.parseInt(str.get(i).get(5)) < (Integer.parseInt(str.get(i).get(4)))) {//is the last server used at the limit of the server type?
+						serverN = Integer.parseInt(str.get(i).get(5));
 						String num = Integer.toString(serverN+1);
-						list.set(5,num);
+						str.get(i).set(5,num);
 					} else {
-						String num = "1";
-						serverN = 0;
-						list.set(5, num);
+						int j = i +1;
+						if(j >= str.size() - 1) {
+							String num = "1";
+							serverN = 0;
+							str.get(i).set(5, num);
+							break;
+						}
+						while(str.get(i).get(1) == str.get(j).get(1)){
+							if(Integer.parseInt(str.get(j).get(5)) < (Integer.parseInt(str.get(j).get(4)))) {
+								serverN = Integer.parseInt(str.get(i).get(5));
+								String num = Integer.toString(serverN+1);
+								str.get(j).set(5,num);
+								break;
+							} else {
+								if(j < str.size() - 1) {
+									System.out.println("string size " + str.size());
+									System.out.println("j size " + j);
+									j++;
+								}
+								break;
+							}
+						} if(serverN == -1) {
+							String num = "1";
+							serverN = 0;
+							str.get(i).set(5, num);
+						}
+						
+						
 					}
 					
 					break;
 				} else {
-					System.out.println("server " + list + " cannot run this job " + job);
+					System.out.println("server " + str.get(i) + " cannot run this job " + job);
+					System.out.println("server list " + str);
+					System.out.println("server list size " + str.size());
 				}
 			}
 			
 			if(foundServer) {
 				MSG(socket, "SCHD " + jobN + " " + server + " " + serverN);
+				System.out.println("server list " + str);
 			}
 		}
 		
@@ -331,9 +359,7 @@ public class Client {
 					
 					if(node.getNodeType() == Node.ELEMENT_NODE) {
 						Element element = (Element) node;
-						System.out.println("made it to 1.5");
 						list.add(0, element.getAttribute("type"));
-						System.out.println("made it to 1.7");
 						list.add(1,element.getAttribute("coreCount"));
 						list.add(2,element.getAttribute("memory"));
 						list.add(3,element.getAttribute("disk"));
@@ -346,6 +372,7 @@ public class Client {
 			}
 			
 			System.out.println("made it to 2");
+			str = sort(str,str.size(), 2);
 			return str;
 			
 		} catch (Exception e) {
@@ -500,7 +527,7 @@ public class Client {
 	 * @param len
 	 * @return sorted arraylist
 	 */
-	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len, boolean original) {
+	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len, int num) {
 		if(len< 2) {
 			return list;
 		}
@@ -516,12 +543,15 @@ public class Client {
 			right.add(list.get(i));
 		}
 		
-		sort(left, left.size(), original);
-		sort(right, right.size(), original);
+		sort(left, left.size(), num);
+		sort(right, right.size(), num);
 		
-		if(original) {
+		if(num == 0) {
 			list = merge(list,left,right,mid,len-mid);
-		} else {
+		} else if(num == 2) {
+			list = mer(list,left,right,mid,len-mid);
+		}
+		else {
 			list = combine(list,left,right,mid,len-mid);
 		}
 		return list;
@@ -592,6 +622,31 @@ public class Client {
 					original.set(k++, right.get(j++));
 				}
 
+
+		}
+		while(i<leftLength) {
+			original.set(k++, left.get(i++));
+		}
+		while(j<rightLength) {
+			original.set(k++, right.get(j++));
+		}
+		
+		return original;
+	}
+	
+	public ArrayList<ArrayList<String>> mer(ArrayList<ArrayList<String>> original, ArrayList<ArrayList<String>> left, ArrayList<ArrayList<String>> right, int leftLength, int rightLength){
+		int i = 0, j = 0, k = 0;
+		
+		while(i < leftLength && j < rightLength) {
+			double lCore = Double.parseDouble(left.get(i).get(1));
+			double rCore = Double.parseDouble(right.get(i).get(1));
+
+				if(lCore <= rCore) {
+					original.set(k++, left.get(i++));
+				}
+				else {
+					original.set(k++, right.get(j++));
+				}
 
 		}
 		while(i<leftLength) {
