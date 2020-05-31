@@ -76,6 +76,7 @@ public class Client {
 				System.out.println("bf - best fit");
 				System.out.println("wf - worst fit");
 				System.out.println("lar - largest server");
+				System.out.println("fs - fastest server (original algorithm)");
 			}
 		}
 		if(accessAlgorithms == 1) {
@@ -94,14 +95,17 @@ public class Client {
 			if(chosenAlgorithm == 0) {
 				System.out.println("largest server algorithm not supported by this Client");
 				System.out.println("please write ff for first fit algorithm");
+				System.out.println("or write fs for fastest algorithm (original algorithm)");
 				return;
 			} else if(chosenAlgorithm == 2) {
 				System.out.println("best-fit server algorithm not supported by this Client");
 				System.out.println("please write ff for first fit algorithm");
+				System.out.println("or write fs for fastest algorithm (original algorithm)");
 				return;
 			} else if(chosenAlgorithm == 3) {
 				System.out.println("worst-fit server algorithm not supported by this Client");
 				System.out.println("please write ff for first fit algorithm");
+				System.out.println("or write fs for fastest algorithm (original algorithm)");
 				return;
 			} else if(chosenAlgorithm == -1) {
 				System.out.println("ERROR: PLEASE INPUT AN ALGORITHM TO RUN THE CLIENT	");
@@ -252,81 +256,76 @@ public class Client {
 		
 		//parse system.xml
 		File file = new File("/home/comp335/ds-sim/system.xml");
-		//File file = new File("/Users/chrispurkiss/Stage2Sub/ds-sim/system.xml");
 				
-		ArrayList<ArrayList<String>> str = parse(file);
+		ArrayList<ArrayList<String>> str = parse(file);//turn the system.xml file into an arrayList
 		
-		String server = null;
-		
+		String server = null;//initialize information to be used when scheduling information
 		String jobN = null;
 		
+		/**
+		 * run through all of the jobs and schedule them
+		 */
 		while(true) {
 			String job = MSG(socket, REDY);//msg redy for jobn
-			if(job.contains(NONE) || job.contains(ERR)) {
+			if(job.contains(NONE) || job.contains(ERR)) {//if out of jobs or an error has occured, stop the loop
 				break;
 			}
-			boolean foundServer = false;
+			boolean foundServer = false;//initalize the boolean if a server has been found
 			
-			String type = getNumb(job, 0);
-			Double coreCount = Double.parseDouble(getNumb(job, 4));
-			Double memory = Double.parseDouble(getNumb(job, 5));
-			Double disk = Double.parseDouble(getNumb(job, 6));
+			Double coreCount = Double.parseDouble(getNumb(job, 4));//get the core count required for the job
+			Double memory = Double.parseDouble(getNumb(job, 5));//get the memory requirements for the job
+			Double disk = Double.parseDouble(getNumb(job, 6));//get the diskspace requirements for the job
 			
-			int serverN = -1;
+			int serverN = -1;//which number server for each type of server
 			
-			jobN = getNumb(job, 2);
+			jobN = getNumb(job, 2);//get the number of the job
 			
-			//for(ArrayList<String> list: str) {
-			for(int i = 0; i < str.size(); i++) {
+			for(int i = 0; i < str.size(); i++) {//run a loop to find if a server can run the job
 				if(coreCount <= Double.parseDouble(str.get(i).get(1)) && memory <= Double.parseDouble(str.get(i).get(2)) && disk <= Double.parseDouble(str.get(i).get(3))) {
-					server = str.get(i).get(0);
-					foundServer = true;
+					server = str.get(i).get(0);//set the server to schedule to
+					foundServer = true;//yes we have found a server
 					if(Integer.parseInt(str.get(i).get(5)) < (Integer.parseInt(str.get(i).get(4)))) {//is the last server used at the limit of the server type?
-						serverN = Integer.parseInt(str.get(i).get(5));
+						serverN = Integer.parseInt(str.get(i).get(5));//send it to the next server of this type
 						String num = Integer.toString(serverN+1);
-						str.get(i).set(5,num);
-					} else {
-						int j = i +1;
-						if(j >= str.size() - 1) {
+						str.get(i).set(5,num);//make sure the next job is sent to the next server
+					} else {//if the last server of that type has been used
+						int j = i +1;//find the next server type
+						if(j >= str.size() - 1) {//only if the end of the arraylist has been reached
 							String num = "1";
 							serverN = 0;
-							str.get(i).set(5, num);
+							str.get(i).set(5, num);//send next job back to the start
 							break;
 						}
-						while(str.get(i).get(1) == str.get(j).get(1)){
-							if(Integer.parseInt(str.get(j).get(5)) < (Integer.parseInt(str.get(j).get(4)))) {
+						while(Double.parseDouble(str.get(i).get(1)) == Double.parseDouble(str.get(j).get(1))){//if the next type of server i.e. tiny -> medium has the same core count
+							if(Integer.parseInt(str.get(j).get(5)) < (Integer.parseInt(str.get(j).get(4)))) {//if that servers limit has not been reached
 								serverN = Integer.parseInt(str.get(i).get(5));
 								String num = Integer.toString(serverN+1);
-								str.get(j).set(5,num);
+								str.get(j).set(5,num);//set the server to the next server
+								server = str.get(j).get(0);
 								break;
-							} else {
+							} else {//if it is also full, then check for the next server of equal core count
 								if(j < str.size() - 1) {
-									System.out.println("string size " + str.size());
-									System.out.println("j size " + j);
 									j++;
+								} else {
+									break;
 								}
-								break;
+								
 							}
-						} if(serverN == -1) {
+						} if(serverN == -1) {//if no other servers with the same coreCount can be found, send it back to the start of the initial server
 							String num = "1";
 							serverN = 0;
 							str.get(i).set(5, num);
 						}
-						
-						
 					}
-					
 					break;
 				} else {
-					System.out.println("server " + str.get(i) + " cannot run this job " + job);
-					System.out.println("server list " + str);
-					System.out.println("server list size " + str.size());
+					System.out.println("server " + str.get(i) + " cannot run this job " + job);//if the server cannot run the job
 				}
 			}
 			
 			if(foundServer) {
-				MSG(socket, "SCHD " + jobN + " " + server + " " + serverN);
-				System.out.println("server list " + str);
+				MSG(socket, "SCHD " + jobN + " " + server + " " + serverN);//if a server has been found, print out the details
+				System.out.println(str);
 			}
 		}
 		
@@ -338,7 +337,7 @@ public class Client {
 	 * get information out of file and return
 	 * the largest server (the one with the most cores)
 	 */
-	private ArrayList<ArrayList<String>> parse(File file) {//todo: find the first server that can take the job
+	private ArrayList<ArrayList<String>> parse(File file) {
 		try {
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -357,6 +356,9 @@ public class Client {
 					Node node = nList.item(i);
 					ArrayList<String> list = new ArrayList<String>();
 					
+					/**
+					 * get server elements from system.xml
+					 */
 					if(node.getNodeType() == Node.ELEMENT_NODE) {
 						Element element = (Element) node;
 						list.add(0, element.getAttribute("type"));
@@ -370,15 +372,13 @@ public class Client {
 					}
 				}
 			}
-			
-			System.out.println("made it to 2");
-			str = sort(str,str.size(), 2);
+			str = sort(str,str.size(), 2);//sort the list based on coreCount
 			return str;
 			
 		} catch (Exception e) {
 			System.out.println(e);
 		}
-		System.out.println("did not work!!!!");
+		System.out.println("did not work!!!!");//an error has occured
 		return null;
 	}
 	
@@ -458,7 +458,7 @@ public class Client {
 	 * @throws IOException
 	 */
 	private String MSG(Socket socket, String msg) throws IOException {
-		outToServer = socket.getOutputStream();
+		outToServer = socket.getOutputStream();//prepare output stream
 		out = new DataOutputStream(outToServer);
 		
 		out.write(msg.getBytes());//write msg
@@ -466,7 +466,7 @@ public class Client {
 		System.out.println("Sent msg to server " + msg);
 		
 		
-		inFromServer = socket.getInputStream();
+		inFromServer = socket.getInputStream();//prepare input stream
 		in = new DataInputStream(inFromServer);
 		
 		byte[] rMSG = new byte[1024];
@@ -525,6 +525,7 @@ public class Client {
 	 * merge sort used to put the smaller servers first
 	 * @param list
 	 * @param len
+	 * @param num
 	 * @return sorted arraylist
 	 */
 	public ArrayList<ArrayList<String>> sort(ArrayList<ArrayList<String>> list, int len, int num) {
@@ -557,6 +558,10 @@ public class Client {
 		return list;
 	}
 	
+	/**
+	 * only used for original arraylist
+	 * for the first-fit function
+	 */
 	public ArrayList<ArrayList<String>> merge(ArrayList<ArrayList<String>> original, ArrayList<ArrayList<String>> left, ArrayList<ArrayList<String>> right, int leftLength, int rightLength){
 		int i = 0, j = 0, k = 0;
 		
@@ -587,6 +592,9 @@ public class Client {
 		return original;
 	}
 	
+	/**
+	 * only used for non-original first fit
+	 */
 	public ArrayList<ArrayList<String>> combine(ArrayList<ArrayList<String>> original, ArrayList<ArrayList<String>> left, ArrayList<ArrayList<String>> right, int leftLength, int rightLength){
 		int i = 0, j = 0, k = 0;
 		
@@ -634,6 +642,12 @@ public class Client {
 		return original;
 	}
 	
+	/**
+	 * this merge method will on receive
+	 * the unsoreted system.xml file
+	 * so it only needs to sort based on 
+	 * core counts
+	 */
 	public ArrayList<ArrayList<String>> mer(ArrayList<ArrayList<String>> original, ArrayList<ArrayList<String>> left, ArrayList<ArrayList<String>> right, int leftLength, int rightLength){
 		int i = 0, j = 0, k = 0;
 		
@@ -659,6 +673,11 @@ public class Client {
 		return original;
 	}
 	
+	/**
+	 * finds the inital order based on corecount from
+	 * the first arraylist
+	 * only used for first-fit
+	 */
 	public void setServerOrder() {
 		String temp = null;
 		for(ArrayList<String> list: allInitialInfo) {
